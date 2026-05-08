@@ -1,0 +1,22 @@
+.env
+.env.local
+.env.*.local
+
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+.DS_Store
+Thumbs.db
+
+# Local Vapi resource snapshots that may contain IDs
+config/*.json
+!config/.gitkeep
+
+# Demo recordings
+demo/*.mp3
+demo/*.wav
+
+# Temporary webhook test data
+.tmp-webhook.json

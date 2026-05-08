@@ -1,0 +1,145 @@
+{
+  "name": "Vapi Call Report Processor",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-000000000001",
+      "name": "Vapi Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi-call-report",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-000000000002",
+      "name": "Is End-of-Call Report",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "a1b2c3d4-e5f6-7890-abcd-condition0001",
+              "leftValue": "={{ $json.body.message.type }}",
+              "rightValue": "end-of-call-report",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-000000000003",
+      "name": "Send Call Report Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [680, 180],
+      "parameters": {
+        "sendTo": "mdzainulabidin11@gmail.com",
+        "subject": "=PolarCrest Call — {{ $json.body.message.call.customer.number || 'Unknown caller' }}",
+        "emailType": "html",
+        "message": "=<h2 style=\"font-family:sans-serif\">PolarCrest Call Report</h2><table style=\"font-family:sans-serif;border-collapse:collapse\"><tr><td style=\"padding:4px 12px 4px 0\"><b>Caller</b></td><td>{{ $json.body.message.call.customer.number }}</td></tr><tr><td style=\"padding:4px 12px 4px 0\"><b>Duration</b></td><td>{{ Math.floor($json.body.message.durationSeconds / 60) }}m {{ Math.round($json.body.message.durationSeconds % 60) }}s</td></tr><tr><td style=\"padding:4px 12px 4px 0\"><b>Cost</b></td><td>${{ Number($json.body.message.cost).toFixed(4) }}</td></tr><tr><td style=\"padding:4px 12px 4px 0\"><b>Ended</b></td><td>{{ $json.body.message.endedReason }}</td></tr></table><h3 style=\"font-family:sans-serif\">Summary</h3><p style=\"font-family:sans-serif\">{{ $json.body.message.summary }}</p><h3 style=\"font-family:sans-serif\">Recording</h3><p><a href=\"{{ $json.body.message.recordingUrl }}\">Listen to call</a></p><h3 style=\"font-family:sans-serif\">Transcript</h3><pre style=\"font-family:monospace;white-space:pre-wrap\">{{ $json.body.message.transcript }}</pre>",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-000000000004",
+      "name": "Append to Calls Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [900, 180],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1e4m-i1oRs9bvyKdnNmozaTEd5-l7rjanbls7yvReAmo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Calls",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.setZone('America/Toronto').toFormat('yyyy-MM-dd HH:mm') }}",
+            "Phone": "={{ $json.body.message.call.customer.number }}",
+            "Duration": "={{ Math.floor($json.body.message.durationSeconds / 60) + ':' + String($json.body.message.durationSeconds % 60).padStart(2, '0') }}",
+            "Cost": "={{ Number($json.body.message.cost).toFixed(4) }}",
+            "Ended Reason": "={{ $json.body.message.endedReason }}",
+            "Summary": "={{ $json.body.message.summary }}",
+            "Recording URL": "={{ $json.body.message.recordingUrl }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {"id": "Timestamp", "displayName": "Timestamp", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+            {"id": "Phone", "displayName": "Phone", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+            {"id": "Duration", "displayName": "Duration", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+            {"id": "Cost", "displayName": "Cost", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+            {"id": "Ended Reason", "displayName": "Ended Reason", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+            {"id": "Summary", "displayName": "Summary", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+            {"id": "Recording URL", "displayName": "Recording URL", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false}
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Vapi Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is End-of-Call Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is End-of-Call Report": {
+      "main": [
+        [
+          {
+            "node": "Send Call Report Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Send Call Report Email": {
+      "main": [
+        [
+          {
+            "node": "Append to Calls Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": []
+}

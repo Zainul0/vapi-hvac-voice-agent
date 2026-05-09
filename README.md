@@ -15,7 +15,7 @@ An AI-powered inbound voice receptionist for HVAC contractors, built with [Vapi]
 | Component | Technology |
 |---|---|
 | Voice AI platform | [Vapi](https://vapi.ai) |
-| LLM | GPT-4.1 (OpenAI) |
+| LLM | GPT-4o mini (OpenAI) |
 | Transcription | Deepgram |
 | Calendar | Google Calendar API |
 | Lead logging | Google Sheets API |

@@ -52,8 +52,8 @@ def main():
         "firstMessageMode": "assistant-speaks-first",
         "model": {
             "provider": "openai",
-            "model": "gpt-4.1",
-            "temperature": 0.7,
+            "model": "gpt-4o-mini",
+            "temperature": 0.3,
             "maxTokens": 300,
             "toolIds": tool_ids,
             "messages": [

@@ -24,7 +24,7 @@ A fully working **AI phone receptionist** that:
 | Service | Free tier | Paid usage |
 |---------|-----------|------------|
 | **Vapi** | $10 free credit | ~$0.05–$0.15 per minute of call time |
-| **OpenAI (GPT-4.1)** | — | ~$0.002–$0.008 per call (included in Vapi billing) |
+| **OpenAI (GPT-4o mini)** | — | ~$0.001–$0.004 per call (included in Vapi billing) |
 | **Deepgram** | — | Included in Vapi billing |
 | **Make.com** | 1,000 operations/month free | $9/mo Starter plan if you exceed free tier |
 | **Google Calendar / Sheets** | Free | Free |
@@ -155,7 +155,7 @@ When disqualified, Joey is polite: *"I completely understand — unfortunately t
 | Component | Tool | Purpose |
 |-----------|------|---------|
 | Voice AI platform | **Vapi** | Assistant hosting, telephony, call orchestration |
-| LLM | **OpenAI GPT-4.1** | Joey's brain — conversation + tool calling |
+| LLM | **OpenAI GPT-4o mini** | Joey's brain — conversation + tool calling |
 | Voice (TTS) | **Vapi built-in** (`Elliot`) | Joey's speaking voice |
 | Transcriber (STT) | **Deepgram Nova-3** | Caller speech recognition |
 | Calendar | **Google Calendar** (Vapi native tool) | Appointment booking + availability checks |
@@ -365,7 +365,7 @@ In Claude Code:
 /create-assistant
 ```
 
-Tell Claude Code: "Create Joey, the PolarCrest HVAC receptionist. Use the system prompt from prompts/joey-system.md. Voice: Vapi Elliot. Model: OpenAI GPT-4.1, temperature 0.7, maxTokens 300. Transcriber: Deepgram nova-3 with HVAC keyword boosts. Attach all 5 tool IDs from .env. Background sound: office. Enable backchanneling and denoising. Add a speech timeout hook at 8 seconds."
+Tell Claude Code: "Create Joey, the PolarCrest HVAC receptionist. Use the system prompt from prompts/joey-system.md. Voice: Vapi Elliot. Model: OpenAI GPT-4o mini, temperature 0.3, maxTokens 300. Transcriber: Deepgram nova-3 with HVAC keyword boosts. Attach all 5 tool IDs from .env. Background sound: office. Enable backchanneling and denoising. Add a speech timeout hook at 8 seconds."
 
 Claude Code creates the assistant and saves the full config to `config/assistant.json` and the ID to `.env` as `VAPI_ASSISTANT_ID`.
 
@@ -835,8 +835,8 @@ The Make scenario is built and managed via REST API by `scripts/create-make-scen
   "firstMessageMode": "assistant-speaks-first",
   "model": {
     "provider": "openai",
-    "model": "gpt-4.1",
-    "temperature": 0.7,
+    "model": "gpt-4o-mini",
+    "temperature": 0.3,
     "maxTokens": 300,
     "toolIds": [
       "<gcal-check-id>",
@@ -1005,9 +1005,9 @@ export $(grep -v '^#' .env | xargs)
 
 Issues can appear in one flow but not the other. Always test both.
 
-### 10. GPT-4.1 is excellent for voice AI tool calling
+### 10. GPT-4o mini is excellent for voice AI tool calling
 
-Temperature 0.7 + maxTokens 300 is a good balance for conversational yet focused responses. It reliably calls tools in parallel (bookAppointment + logLead simultaneously), follows the one-question-at-a-time rule, and handles edge cases well.
+Temperature 0.3 + maxTokens 300 is a good balance for focused, consistent responses. It reliably calls tools, follows the one-question-at-a-time rule, and handles edge cases well — at a fraction of the cost of larger models.
 
 ### 11. Emergency triage must come BEFORE the standard qualifying flow
 
@@ -1069,11 +1069,11 @@ Use `+19057124499` in code, not `(905) 712-4499`. When Joey speaks a number to a
 
 **End-of-call report** — A JSON payload Vapi sends to your webhook URL when a call ends. Contains transcript, summary, duration, cost, recording URL, and how the call ended.
 
-**GPT-4.1** — OpenAI's language model that powers Joey's reasoning and conversation. It decides what to say and when to use tools.
+**GPT-4o mini** — OpenAI's language model that powers Joey's reasoning and conversation. It decides what to say and when to use tools.
 
 **Hook** — An automated action that fires on a call event (e.g., "if the caller is silent for 8 seconds, say 'Are you still there?'"). Configured in the assistant.
 
-**LLM** — Large Language Model. The AI brain. In this project it's GPT-4.1 via OpenAI.
+**LLM** — Large Language Model. The AI brain. In this project it's GPT-4o mini via OpenAI.
 
 **Make.com** — A no-code automation platform. You connect apps and define what should happen when a trigger fires. Here it receives the call report from Vapi, sends an email, and updates Google Sheets.
 
@@ -1117,8 +1117,8 @@ Yes, with trade-offs. Without Make, you won't get post-call email notifications 
 **What if I want to use a different voice?**
 Change `voiceId` in the assistant config. See the supported voices list in Lesson #3.
 
-**Can I use a different LLM instead of GPT-4.1?**
-Yes — Vapi supports OpenAI, Anthropic Claude, Google Gemini, and others. Change the `provider` and `model` fields in the assistant config. GPT-4.1 is recommended for tool calling reliability.
+**Can I use a different LLM instead of GPT-4o mini?**
+Yes — Vapi supports OpenAI, Anthropic Claude, Google Gemini, and others. Change the `provider` and `model` fields in the assistant config. GPT-4o mini is the recommended choice for this project — good tool calling reliability at low cost.
 
 **How do I update Joey's system prompt after he's created?**
 Edit `prompts/joey-system.md`, then PATCH the assistant via the Vapi API or dashboard. Claude Code can do this: "Update Joey's system prompt with the content from prompts/joey-system.md."

@@ -1,14 +1,81 @@
 # VapiCodeAI — Voice AI Receptionist (PolarCrest HVAC Solutions)
 
-## What This Is
+---
 
-A **code-first voice AI receptionist** for PolarCrest HVAC Solutions, a residential and commercial HVAC contractor in Mississauga, Ontario. The assistant's name is **Joey**. He handles inbound calls, qualifies leads, books appointments into Google Calendar, and routes emergency calls appropriately.
+## What You'll Build
 
-**Purpose:** Demo project and reusable template for building voice AI receptionists. Built 100% through Claude Code using Vapi Skills and the Vapi MCP documentation server — no dashboard clicking.
+A fully working **AI phone receptionist** that:
+- Answers inbound calls as "Joey" from PolarCrest HVAC Solutions
+- Triages emergencies (gas leaks, no heat, CO alarms) and routes them instantly
+- Qualifies leads by asking the right questions
+- Books appointments into Google Calendar in real time
+- Logs every lead into Google Sheets
+- Sends you an email summary after every call
+- Transfers callers to a human when needed
+
+**Difficulty:** Beginner-friendly. No coding required — you paste commands and run scripts.
+**Time to build:** ~2–3 hours (first time). ~45 minutes once you've done it before.
+**This is fictional** — PolarCrest HVAC Solutions is a demo company. Swap business details to deploy for a real client.
+
+---
+
+## Estimated Costs
+
+| Service | Free tier | Paid usage |
+|---------|-----------|------------|
+| **Vapi** | $10 free credit | ~$0.05–$0.15 per minute of call time |
+| **OpenAI (GPT-4.1)** | — | ~$0.002–$0.008 per call (included in Vapi billing) |
+| **Deepgram** | — | Included in Vapi billing |
+| **Make.com** | 1,000 operations/month free | $9/mo Starter plan if you exceed free tier |
+| **Google Calendar / Sheets** | Free | Free |
+| **Vapi phone number** | — | ~$2/month for a US/Canada number |
+
+**Realistic estimate for testing:** Under $5 total (mostly Vapi call minutes). The $10 free credit covers ~100 minutes of calls.
+
+---
+
+## Prerequisites — What You Need Before Starting
+
+### Accounts to create (all free to start)
+
+1. **Vapi** — voice AI platform (the core of this project)
+   - Sign up at vapi.ai
+   - Verify your email
+   - You'll get $10 free credit automatically
+
+2. **Google Account** — for Calendar and Sheets
+   - You likely already have one (Gmail)
+   - If not, create one at accounts.google.com
+
+3. **Make.com** — automation platform (handles post-call emails + sheet updates)
+   - Sign up at make.com
+   - Free plan is enough to start
+
+4. **Claude Code** — the AI coding assistant you're reading this from
+   - Already set up if you're reading this
+
+### Software to install on your computer
+
+1. **Node.js** (version 18 or newer) — needed to run the Make.com setup script
+   - Download from nodejs.org → click "LTS" → install
+   - Verify: open a terminal and type `node --version` — should show `v18.x.x` or higher
+
+2. **Git** — for version control (optional but recommended)
+   - Download from git-scm.com
+   - Already installed on most Macs; Windows users install it separately
+
+3. **A terminal / command prompt**
+   - Windows: use PowerShell or Git Bash
+   - Mac: use Terminal
+
+### What is Claude Code?
+Claude Code is an AI assistant that runs in your terminal or VS Code. It reads your project files, writes code, and calls APIs for you. In this project, you give it slash commands like `/vapi-create-tool` and it builds Vapi resources automatically.
 
 ---
 
 ## Business Context — PolarCrest HVAC Solutions
+
+This is the fictional company Joey works for. Swap these details when deploying for a real client.
 
 | Field | Value |
 |-------|-------|
@@ -102,7 +169,7 @@ When disqualified, Joey is polite: *"I completely understand — unfortunately t
 
 ## Environment Variables
 
-All credentials go in `.env` (never committed to git):
+All credentials go in `.env` in your project folder (never committed to git — the `.gitignore` already excludes it).
 
 ```
 # Vapi
@@ -130,71 +197,367 @@ GOOGLE_SPREADSHEET_ID=
 GOOGLE_CALENDAR_ID=
 ```
 
+**How to find your Make zone:** Log into Make.com. Look at the URL in your browser — it starts with something like `eu2.make.com` or `us1.make.com`. The part before `.make.com` is your zone.
+
 ---
 
-## Build Workflow — Order of Operations
+## Build Workflow — Complete Step-by-Step Guide
 
-Each step depends on the previous one. Follow this exact sequence.
+Each phase depends on the previous one. Follow this exact order. Do not skip ahead.
+
+---
+
+### Phase 0: Set Up Your Environment
+
+**What this phase does:** Gets your project folder ready with the right files.
+
+**Steps:**
+
+1. Open a terminal (PowerShell on Windows, Terminal on Mac)
+2. Navigate to where you want the project: `cd Documents`
+3. If you received this as a zip, unzip it. If cloning from git: `git clone <repo-url>`
+4. Open the project folder in VS Code or your editor
+5. Create a `.env` file in the project root. Copy the template from the Environment Variables section above and paste it in — leave values blank for now
+6. Open Claude Code in the project folder
+
+**Success check:** You can see the project files (`CLAUDE.md`, `scripts/`, `config/`, etc.) and Claude Code is running.
+
+---
 
 ### Phase 1: Foundation
 
-| Step | Skill / Action | What It Does |
-|------|---------------|--------------|
-| **1.1** | `/vapi-setup-api-key` | Get API key from dashboard, validate it, save to `.env` |
-| **1.2** | Manual (Dashboard) | Connect Google Calendar: Dashboard > Integrations > Tools Provider > Google Calendar > Connect |
-| **1.3** | Manual (Dashboard) | Connect Google Sheets: Dashboard > Integrations > Tools Provider > Google Sheets > Connect |
-| **1.4** | Create Google Sheet | Create "PolarCrest Leads" sheet with column headers (use Apps Script below or manually). See Google Sheets Lead Schema below. |
+**What this phase does:** Connects your Vapi account, links Google Calendar and Sheets, and creates the spreadsheet Joey will log leads into.
 
-> Steps 1.2 and 1.3 MUST be done in the Vapi Dashboard — Google OAuth cannot be completed via API. Everything else is code-first.
+#### Step 1.1 — Get your Vapi API key
 
-### Phase 2: Tools (create before assistant — need tool IDs)
+In Claude Code, run:
+```
+/setup-api-key
+```
 
-| Step | Skill | Tool |
-|------|-------|------|
-| **2.1** | `/vapi-create-tool` | Google Calendar — Check Availability |
-| **2.2** | `/vapi-create-tool` | Google Calendar — Create Event |
-| **2.3** | `/vapi-create-tool` | Google Sheets — Append Row (lead logging) — **CRITICAL: hardcode spreadsheetId and range in the tool description** (see Lessons Learned) |
-| **2.4** | `/vapi-create-tool` | End Call |
-| **2.5** | `/vapi-create-tool` | Transfer Call (fallback to Ryan Kowalski's number) |
+Claude Code will guide you to:
+1. Go to app.vapi.ai → click your profile (top right) → API Keys
+2. Click "Create API Key" → name it anything → copy the key
+3. Paste it when Claude Code asks
+
+Claude Code saves it to your `.env` file automatically.
+
+**Success check:** Claude Code confirms the key is valid.
+
+#### Step 1.2 — Connect Google Calendar (manual — must be done in dashboard)
+
+> This step CANNOT be done via code. Google requires a browser-based login for security.
+
+1. Go to app.vapi.ai
+2. Click **Integrations** in the left sidebar
+3. Click **Tools Provider**
+4. Find **Google Calendar** → click **Connect**
+5. A Google login popup appears — log in with the Google account that has the calendar you want Joey to use
+6. Grant the permissions it asks for
+7. You'll see "Connected" next to Google Calendar
+
+**Which calendar?** Joey will book into whatever calendar is linked. Use a dedicated calendar for PolarCrest (create one in Google Calendar first if you want it separate from your personal calendar).
+
+**Success check:** Google Calendar shows "Connected" in Vapi Dashboard → Integrations.
+
+#### Step 1.3 — Connect Google Sheets (manual — must be done in dashboard)
+
+Same process as 1.2, but for **Google Sheets**:
+1. Vapi Dashboard → Integrations → Tools Provider → Google Sheets → Connect
+2. Log in with the same Google account
+3. Grant permissions
+
+**Success check:** Google Sheets shows "Connected" in Vapi Dashboard → Integrations.
+
+#### Step 1.4 — Create the "PolarCrest Leads" Google Sheet
+
+You need to create the spreadsheet that Joey will log call data into.
+
+**Option A — Automated (recommended):**
+1. Go to script.google.com
+2. Click "New project"
+3. Delete the existing code and paste the `createPolarCrestLeadsSheet()` function from the "Apps Script to Create the Sheet" section below
+4. Click Run (the triangle button)
+5. Grant permissions when prompted
+6. Check the **Logs** (View → Logs) — you'll see the Spreadsheet ID and URL
+7. Copy the Spreadsheet ID (looks like `1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms`)
+
+**Option B — Manual:**
+1. Go to sheets.google.com → click the "+" to create a new sheet
+2. Rename it "PolarCrest Leads"
+3. Rename the first tab "Leads"
+4. Add headers in row 1 (columns A–M): Timestamp, Caller Name, Phone, Email, Service Type, Equipment Details, Location, Timeline, Appointment, Emergency, Qualified, Notes, Call Duration
+
+After creating the sheet:
+1. Copy the Spreadsheet ID from the URL (the long string between `/d/` and `/edit` in the sheet URL)
+2. Add it to your `.env` file: `GOOGLE_SPREADSHEET_ID=your-id-here`
+3. Also note your Google Calendar ID: go to calendar.google.com → click the 3-dot menu next to your calendar → Settings → scroll down to "Calendar ID" → copy it → add to `.env`: `GOOGLE_CALENDAR_ID=your-calendar-id`
+
+**Success check:** You have a Google Sheet with 13 column headers in row 1. You have the Spreadsheet ID in your `.env`.
+
+---
+
+### Phase 2: Tools
+
+**What this phase does:** Creates the 5 tools Joey uses during calls. Tools are actions Joey can take — like checking the calendar or saving a lead. You need their IDs before creating the assistant, because the assistant references them by ID.
+
+> **Why create tools first?** The assistant config needs to reference tool IDs. You can't reference IDs that don't exist yet.
+
+#### Step 2.1 — Google Calendar Check Availability tool
+
+In Claude Code:
+```
+/create-tool
+```
+
+Tell Claude Code: "Create the Google Calendar check availability tool for PolarCrest. Business hours are Mon-Fri 7AM-7PM EST, Sat 8AM-4PM EST."
+
+Claude Code creates the tool and saves the ID to `config/tools.json` and `.env` as `VAPI_GCAL_CHECK_TOOL_ID`.
+
+#### Step 2.2 — Google Calendar Create Event tool
+
+Run `/create-tool` again.
+
+Tell Claude Code: "Create the Google Calendar create event tool for booking 30-minute appointments. Use America/Toronto timezone."
+
+Saved as `VAPI_GCAL_CREATE_TOOL_ID`.
+
+#### Step 2.3 — Google Sheets Log Lead tool (CRITICAL)
+
+Run `/create-tool` again.
+
+Tell Claude Code: "Create the Google Sheets append row tool for logging leads. Use spreadsheetId: [YOUR_ACTUAL_SPREADSHEET_ID] and range: Leads!A:M. Column order: Timestamp, Caller Name, Phone, Email, Service Type, Equipment Details, Location, Timeline, Appointment, Emergency, Qualified, Notes, Call Duration."
+
+**Replace `[YOUR_ACTUAL_SPREADSHEET_ID]` with the real ID from your `.env`.** This is critical — see Lesson #1 in Lessons Learned below.
+
+Saved as `VAPI_GSHEETS_TOOL_ID`.
+
+#### Step 2.4 — End Call tool
+
+Run `/create-tool` again.
+
+Tell Claude Code: "Create an End Call tool. Joey should use it after confirming the appointment, after delivering emergency safety instructions, or when the caller is done."
+
+Saved as `VAPI_END_CALL_TOOL_ID`.
+
+#### Step 2.5 — Transfer Call tool
+
+Run `/create-tool` again.
+
+Tell Claude Code: "Create a Transfer Call tool that transfers to +1XXXXXXXXXX (replace with the actual office number). Use it when the caller insists on speaking to someone immediately or has a complex commercial inquiry."
+
+**Replace `+1XXXXXXXXXX` with the real transfer number** (e.g., Ryan's cell or the office line).
+
+Saved as `VAPI_TRANSFER_CALL_TOOL_ID`.
+
+**Success check:** All 5 tool IDs are populated in `config/tools.json` and `.env`.
+
+---
 
 ### Phase 3: Assistant
 
-| Step | Skill | What It Does |
-|------|-------|--------------|
-| **3.1** | `/vapi-create-assistant` | Create Joey with system prompt, model, voice, transcriber, and attach all tool IDs from Phase 2 |
+**What this phase does:** Creates Joey — the AI assistant with his personality, voice, transcriber, system prompt, and all 5 tools attached.
+
+#### Step 3.1 — Create Joey
+
+In Claude Code:
+```
+/create-assistant
+```
+
+Tell Claude Code: "Create Joey, the PolarCrest HVAC receptionist. Use the system prompt from prompts/joey-system.md. Voice: Vapi Elliot. Model: OpenAI GPT-4.1, temperature 0.7, maxTokens 300. Transcriber: Deepgram nova-3 with HVAC keyword boosts. Attach all 5 tool IDs from .env. Background sound: office. Enable backchanneling and denoising. Add a speech timeout hook at 8 seconds."
+
+Claude Code creates the assistant and saves the full config to `config/assistant.json` and the ID to `.env` as `VAPI_ASSISTANT_ID`.
+
+**Success check:** `config/assistant.json` exists and contains an `id` field. The ID is in `.env`.
+
+---
 
 ### Phase 4: Phone Number
 
-| Step | Skill | What It Does |
-|------|-------|--------------|
-| **4.1** | `/vapi-create-phone-number` | Buy a Vapi number and assign Joey's assistant ID |
+**What this phase does:** Buys a real phone number and assigns it to Joey. When someone calls this number, Joey answers.
+
+#### Step 4.1 — Buy a Vapi phone number
+
+In Claude Code:
+```
+/create-phone-number
+```
+
+Tell Claude Code: "Buy a Vapi phone number in Canada (area code 416 or 905 if available) and assign it to Joey's assistant ID from .env."
+
+Claude Code purchases the number and saves the config to `config/phone-number.json` and the ID to `.env` as `VAPI_PHONE_NUMBER_ID`.
+
+**How much does a number cost?** About $2/month, billed by Vapi. It comes out of your Vapi credit.
+
+**Success check:** You have a phone number in `config/phone-number.json`. You can call it and hear Joey's greeting.
+
+> **Quick test:** Call the number right now. Joey should answer: "Thanks for calling PolarCrest HVAC, this is Joey. How can I help you today?" If he answers, Phase 4 is working. Tools may not work yet (those need the Make.com webhook in Phase 5), but the assistant itself is live.
+
+---
 
 ### Phase 5: Webhook (Make.com)
 
-> **Note:** Phase 5 is built in reverse order — the scenario (5.2) must exist before its webhook URL can be assigned to the Vapi assistant (5.1). The script `scripts/create-make-scenario.js` does the heavy lifting.
+**What this phase does:** Sets up an automation that runs after every call ends. It sends you an email summary and logs call data (duration, cost, recording link) to the `Calls` tab in your spreadsheet.
 
-| Step | Action | What It Does |
-|------|--------|--------------|
-| **5.0a** | Generate Make REST API token | Profile → API access → Add token. Scopes: `scenarios:read/write`, `hooks:read/write`, `connections:read`, `teams:read`. Save to `.env` as `MAKE_API_KEY`. |
-| **5.0b** | Add Gmail + Google connections in Make UI | One-time Google OAuth (cannot be done via API). Adds two connections — Gmail (for sending notifications) and Google (for Sheets append). |
-| **5.0c** | Create the `Calls` tab in the spreadsheet | Run the Apps Script in the "Calls Tab Schema" section below to add a `Calls` tab with proper headers. |
-| **5.2a** | Create custom webhook | `POST /api/v2/hooks` with `typeName: "gateway-webhook"` → captures `webhook URL` and `hookId`. |
-| **5.2b** | Build & activate scenario | Run `node scripts/create-make-scenario.js` → POSTs the 3-module blueprint (Webhook → filter → Gmail → Sheets addRow), then PATCHes scheduling and POSTs `/start`. |
-| **5.1** | PATCH Vapi assistant `server.url` | `PATCH /assistant/{id}` with `{"server":{"url":"<MAKE_WEBHOOK_URL>"}}` — wires Vapi's end-of-call reports to the Make webhook. |
+**What is a webhook?** A webhook is a URL that receives data when something happens. When a call ends, Vapi sends call data to a URL you specify. Make.com receives that data and does things with it (sends email, updates spreadsheet).
+
+**Overview of what gets built:**
+```
+Call ends → Vapi sends data to Make webhook URL
+                    ↓
+              Make receives it
+                    ↓ (only if it's an end-of-call report)
+              Gmail sends you an email summary
+                    ↓
+              Google Sheets logs the call row
+```
+
+**Build order:** You must build the Make scenario BEFORE telling Vapi the webhook URL, because you need the URL from Make first.
+
+#### Step 5.0a — Generate a Make REST API token
+
+What is a REST API token? It's a password that lets scripts talk to Make.com on your behalf.
+
+1. Log into make.com
+2. Click your profile icon (bottom left) → **Profile**
+3. Click **API access** tab
+4. Click **Add token**
+5. Name it "PolarCrest HVAC" or anything
+6. Set these scopes (checkboxes): `scenarios:read`, `scenarios:write`, `hooks:read`, `hooks:write`, `connections:read`, `teams:read`
+7. Copy the token
+8. Add to `.env`: `MAKE_API_KEY=your-token-here`
+
+Also add your Make zone to `.env`: `MAKE_ZONE=eu2` (replace with your actual zone — check your Make.com URL).
+
+#### Step 5.0b — Add Gmail and Google connections in Make UI (manual — browser required)
+
+> Google OAuth can't be done via script. This is a one-time browser step.
+
+1. Log into make.com
+2. Click **Connections** in the left sidebar
+3. Click **Create a connection**
+4. Search for **Gmail** → select it → click **Continue** → log in with your Google account → grant permissions → Save
+5. Repeat for **Google Sheets**: Create connection → search "Google Sheets" → connect same Google account
+
+**Success check:** You see two connections (Gmail and Google Sheets/Drive) listed under Connections.
+
+#### Step 5.0c — Create the `Calls` tab in your spreadsheet
+
+1. Go to script.google.com
+2. Open a new project (or reuse the one from Step 1.4)
+3. Paste the `createPolarCrestCallsTab()` function from the "Calls Tab Schema" section below
+4. **Replace `YOUR_SPREADSHEET_ID`** in the script with your actual Spreadsheet ID
+5. Click Run
+6. Grant permissions
+
+**Success check:** Your Google Sheet now has two tabs: "Leads" and "Calls".
+
+#### Step 5.0d — Find your Make Team ID
+
+The setup script needs your Make team ID. Get it:
+1. Log into Make.com
+2. Click **Organization** in the left sidebar → **Teams**
+3. The number in the URL is your team ID (e.g., `make.com/org/123456/teams` → ID is `123456`)
+4. Or: the script will try to find it automatically if you don't know it
+
+#### Step 5.0e — Install script dependencies
+
+In your terminal, from the project folder:
+```
+npm install axios dotenv
+```
+
+This installs two libraries the setup script needs (`axios` for making web requests, `dotenv` for reading your `.env` file).
+
+#### Step 5.2 — Run the Make scenario setup script
+
+This script does everything automatically:
+1. Creates the Make webhook
+2. Builds the 3-module scenario (Webhook → Gmail → Google Sheets)
+3. Activates the scenario
+4. Saves the webhook URL and IDs to your `.env`
+
+Run it:
+```
+node scripts/create-make-scenario.js
+```
+
+The script will prompt you for:
+- Your Make team ID (from step 5.0d)
+- The Gmail connection ID (shown in Make.com → Connections → click Gmail → note the ID in the URL)
+- The Google Sheets connection ID (same — click the Sheets connection)
+- Your Gmail address (where to send call notification emails)
+- Your Google Spreadsheet ID (from `.env`)
+
+After it runs, check your `.env` — it should now have:
+```
+MAKE_WEBHOOK_URL=https://hook.eu2.make.com/xxxxxxxxxxxxxxxx
+MAKE_WEBHOOK_HOOK_ID=12345678
+MAKE_SCENARIO_ID=87654321
+```
+
+**If the script fails:** See the Make.com troubleshooting section at the bottom.
+
+#### Step 5.1 — Wire the webhook URL to Joey
+
+Now tell Vapi to send call reports to your Make webhook:
+
+```bash
+curl -X PATCH "https://api.vapi.ai/assistant/$VAPI_ASSISTANT_ID" \
+  -H "Authorization: Bearer $VAPI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"server\":{\"url\":\"$MAKE_WEBHOOK_URL\"}}"
+```
+
+On Windows PowerShell, use Claude Code to run this — tell it: "PATCH the Vapi assistant server URL to [your MAKE_WEBHOOK_URL from .env]."
+
+**Success check:** The API returns the updated assistant JSON with `server.url` set to your Make webhook URL.
+
+---
 
 ### Phase 6: Testing
 
-| Step | Skill | What It Does |
-|------|-------|--------------|
-| **6.1** | `/vapi-create-call` | Outbound test call to your own phone |
-| **6.2** | Call the Vapi number | Inbound test — full qualifying flow end-to-end |
-| **6.3** | Verify in Make + Sheets + Gmail | Make scenario history shows a successful run; `Calls` tab has a new row; an email lands in your inbox |
+**What this phase does:** Verifies the entire system works end to end.
+
+#### Step 6.1 — Outbound test call (Joey calls you)
+
+In Claude Code:
+```
+/create-call
+```
+
+Tell Claude Code: "Create an outbound test call from Joey's assistant to my phone number [your number]."
+
+Joey will call your phone. Answer it and test the qualifying flow:
+- Ask about furnace repair
+- Give your name, phone, email
+- Let Joey book an appointment
+- Confirm the appointment and say goodbye
+
+#### Step 6.2 — Inbound test (you call Joey)
+
+Call the phone number from `config/phone-number.json`. Joey should answer immediately. Test the same flow again — inbound routing is separate from outbound and worth verifying independently.
+
+Also test emergency flows:
+- Say "I smell gas" → Joey should give safety instructions and NOT book an appointment
+- Say "My furnace stopped working" → Joey should treat it as urgent and offer priority booking
+
+#### Step 6.3 — Verify the full automation pipeline
+
+After the call ends, within 1–2 minutes:
+1. **Check your email** — you should receive an HTML email with the call summary, duration, cost, and recording link
+2. **Check Google Sheets → Leads tab** — Joey should have logged the caller's info during the call
+3. **Check Google Sheets → Calls tab** — Make should have appended a row with post-call data
+4. **Check Make → Scenarios** — open your scenario → click the clock icon (History) → you should see a successful run
+
+**If email arrived but Sheets didn't update (or vice versa):** Open the Make scenario run history and click the failed run to see which module errored and why.
 
 ---
 
 ## Joey's System Prompt
 
-Use this as the system message when creating the assistant. Source of truth is `prompts/joey-system.md`.
+Source of truth is `prompts/joey-system.md`. This is what gets pasted into the assistant as the system message.
 
 ```
 You are Joey, the virtual receptionist at PolarCrest HVAC Solutions. You answer inbound phone calls for a residential and commercial HVAC contractor serving Mississauga, Brampton, Oakville, and surrounding areas in Ontario, Canada.
@@ -260,6 +623,8 @@ If the caller mentions any of the following, handle it immediately BEFORE the st
 
 ## Tool Configurations
 
+These are the exact JSON configs used to create each tool. Claude Code handles this for you via `/create-tool`, but you can also create them manually via the Vapi dashboard or API.
+
 ### Google Calendar — Check Availability
 ```json
 {
@@ -293,7 +658,7 @@ If the caller mentions any of the following, handle it immediately BEFORE the st
 }
 ```
 
-> **CRITICAL:** Hardcode the actual Google Spreadsheet ID in the tool description above. If you don't, the LLM will guess a fake ID and the tool call will fail with "Requested entity was not found."
+> **CRITICAL:** Replace `YOUR_SPREADSHEET_ID_HERE` with the actual Google Spreadsheet ID. If you don't, the AI will guess a fake ID and the tool will fail with "Requested entity was not found."
 
 ### End Call
 ```json
@@ -345,11 +710,11 @@ Create a Google Sheet called "PolarCrest Leads" with a tab named "Leads" and the
 | J: Emergency | Was this an emergency call? | Yes |
 | K: Qualified | Yes/No/Partial | Yes |
 | L: Notes | Any additional context | Secondary zone (+$35), has Comfort Care Plan |
-| M: Call Duration | _Reserved — currently NOT filled. See `Calls` tab below for post-call data._ | — |
+| M: Call Duration | Reserved — filled by Calls tab, not Joey | — |
 
 ### Apps Script to Create the Sheet
 
-Run this in [Google Apps Script](https://script.google.com) to auto-create the sheet with headers and formatting:
+Run this in [Google Apps Script](https://script.google.com) (script.google.com → New project → paste this → Run):
 
 ```javascript
 function createPolarCrestLeadsSheet() {
@@ -385,7 +750,7 @@ function createPolarCrestLeadsSheet() {
 }
 ```
 
-After running, copy the Spreadsheet ID from the logs and hardcode it in the logLead tool description and `.env`.
+After running, check **View → Logs** for the Spreadsheet ID. Copy it and add to `.env` as `GOOGLE_SPREADSHEET_ID`.
 
 ---
 
@@ -436,7 +801,7 @@ function createPolarCrestCallsTab() {
 }
 ```
 
-> The Make `addRow` module relies on `Calls` being a real tab with headers in row 1. If the tab doesn't exist when the scenario fires, the module will error and the whole scenario run fails (the Gmail step won't fire either).
+> The Make `addRow` module requires the `Calls` tab to already exist with headers in row 1. If it's missing, the entire Make scenario run will fail (including the Gmail step).
 
 ---
 
@@ -452,12 +817,12 @@ The Make scenario is built and managed via REST API by `scripts/create-make-scen
 [3] Google Sheets — Add a Row (google-sheets:addRow v2)  →  appends to "Calls" tab
 ```
 
-**Key auth/format details (verified working on 2026-05-01):**
-- Make REST API: `Authorization: Token <api_key>` (capital T, not `Bearer`)
+**Key technical details (verified working on 2026-05-01):**
+- Make REST API auth: `Authorization: Token <api_key>` (capital T, not `Bearer`)
 - Webhook creation: `POST /api/v2/hooks?teamId=<id>` with `{ typeName: "gateway-webhook" }`
-- Scenario creation: `POST /api/v2/scenarios?confirmed=true` — `blueprint` and `scheduling` must be **JSON-stringified** values, not nested objects
+- Scenario creation: `POST /api/v2/scenarios?confirmed=true` — `blueprint` and `scheduling` must be JSON-stringified strings, not nested objects
 - Activation requires `scheduling: {type:"indefinitely", interval:900}` — `type` alone returns `IM008 "Invalid interval"`
-- Module names that work: `gateway:CustomWebHook` v1, `google-email:sendAnEmail` v4, `google-sheets:addRow` v2, `google-sheets:updateRow` v2. Names that DON'T work: `searchRows`, `listRows`, `ActionSendEmail`. Module discovery via `/api/v2/sdk/apps/*` requires the `sdk-apps:read` scope on the API token.
+- Working module names: `gateway:CustomWebHook` v1, `google-email:sendAnEmail` v4, `google-sheets:addRow` v2
 
 ---
 
@@ -551,15 +916,15 @@ VapiCodeAI/
 
 When Joey finishes a call, Vapi sends an `end-of-call-report` to the assistant's `server.url` — which points at the Make.com custom webhook. The Make scenario:
 
-1. Receives the webhook POST (Make replies with `{}` instantly — that's automatic)
+1. Receives the webhook POST (Make replies with `{}` instantly — automatic)
 2. Filters for `message.type == "end-of-call-report"` (skips other message types Vapi sends mid-call)
 3. Reads from the payload: `transcript`, `summary`, `recordingUrl`, `durationSeconds`, `cost`, `endedReason`, `call.customer.number`
-4. Formats duration as `mm:ss` and cost as `$X.XXXX`
+4. Formats duration as `mm:ss`
 5. Sends an HTML email notification (Module 2 — Gmail `sendAnEmail`)
 6. Appends a row to the `Calls` tab of the leads spreadsheet (Module 3 — Google Sheets `addRow`)
 
-> **Why append to a `Calls` tab instead of updating the Lead row's "Call Duration"?**
-> The original design called for matching by phone number and updating the existing lead row's `Call Duration` column. That requires a `searchRows`-style module which is not exposed via Make's blueprint API at the verified module versions (only `addRow` and `updateRow` worked). Append-to-Calls keeps post-call data co-located with leads (same spreadsheet) and avoids the search-then-update dance. The original lead row in the `Leads` tab is still written by Joey during the call via the `logLead` tool.
+> **Why append to a `Calls` tab instead of updating the Lead row?**
+> Matching by phone number and updating an existing row requires a `searchRows` module which is not exposed via Make's blueprint API at the verified module versions. Append-to-Calls avoids the search-then-update complexity. Lead data from the call is already in the `Leads` tab; post-call data goes in `Calls`. Both are in the same spreadsheet.
 
 ---
 
@@ -567,15 +932,16 @@ When Joey finishes a call, Vapi sends an `end-of-call-report` to the assistant's
 
 | Concept | What It Means | Relevant Skill |
 |---------|--------------|----------------|
-| **Assistant** | AI agent = LLM + voice + transcriber + tools + prompt | `/vapi-create-assistant` |
-| **Tool** | Action the assistant takes during a call | `/vapi-create-tool` |
-| **Phone Number** | Real phone number assigned to an assistant | `/vapi-create-phone-number` |
-| **Server URL** | Your endpoint for call events and reports | `/vapi-setup-webhook` |
-| **Squad** | Multi-assistant with handoffs (NOT needed here) | `/vapi-create-squad` |
-| **Workflow** | Node-based conversation flow (NOT needed here) | `/vapi-create-workflow` |
-| **Hooks** | Automated actions on call events | Part of assistant config |
-| **`toolIds`** | Array of saved tool IDs attached to the assistant | Part of assistant config |
-| **`{{now}}`** | Template variable — Vapi replaces with current date/time | Used in prompts |
+| **Assistant** | The AI agent — has a voice, LLM, transcriber, tools, and a system prompt | `/create-assistant` |
+| **Tool** | An action the assistant can take during a call (book calendar, log to sheets, etc.) | `/create-tool` |
+| **Phone Number** | A real phone number assigned to an assistant — calls to this number reach Joey | `/create-phone-number` |
+| **Server URL** | A webhook URL where Vapi sends call events after every call | `/setup-webhook` |
+| **Squad** | Multiple assistants that hand off to each other (not needed here) | `/create-squad` |
+| **Workflow** | Node-based conversation flow with if/else branches (not needed here) | `/create-workflow` |
+| **Hooks** | Automated responses to call events (e.g., say something after 8 seconds of silence) | Part of assistant config |
+| **`toolIds`** | List of tool IDs attached to an assistant — the tools it can use | Part of assistant config |
+| **`{{now}}`** | Template variable — Vapi replaces it with the current date/time at call start | Used in prompts and tool descriptions |
+| **E.164 format** | International phone number format: `+1XXXXXXXXXX` (country code + 10 digits, no dashes or spaces) | Used for transfer call destinations |
 
 ### Vapi MCP Documentation
 
@@ -586,9 +952,9 @@ mcp__vapi-docs__searchDocs(query: "your question here")
 
 ---
 
-## Lessons Learned (from the initial build)
+## Lessons Learned (Critical — Read Before Building)
 
-These are critical gotchas discovered during the first build. Read these BEFORE starting.
+These are gotchas discovered during the first build. Each one cost time. Read them first.
 
 ### 1. Google Sheets tool MUST have hardcoded spreadsheet ID
 
@@ -596,86 +962,68 @@ The LLM will **guess** the spreadsheet ID if you don't tell it explicitly. On th
 
 **Fix:** Hardcode the real spreadsheet ID AND the range directly in the tool's `description` field:
 ```
-"ALWAYS use spreadsheetId: your-spreadsheet-id-here and range: Leads!A:M"
+"ALWAYS use spreadsheetId: your-actual-spreadsheet-id and range: Leads!A:M"
 ```
 
 ### 2. System prompt must explicitly tell Joey to use logLead
 
-Just having the tool attached via `toolIds` is NOT enough. The LLM won't reliably call it unless the system prompt explicitly says to. Add it as a numbered step in "Your job on every call":
+Just having the tool attached via `toolIds` is NOT enough. The LLM won't reliably call it unless the system prompt explicitly says to. Add it as a numbered step:
 ```
-10. Log the lead using the logLead tool — include all collected info (name, phone, email, service type, equipment details, location, timeline, emergency flag, appointment date/time, and any notes)
-```
-
-### 3. Vapi voice `Lily` is RETIRED (as of March 1, 2026)
-
-Lily was part of a legacy voice set that was phased out. Attempting to set `voiceId: "Lily"` returns:
-```
-"The Lily voice is part of a legacy voice set that is being phased out"
+10. Log the lead using the logLead tool — include all collected info
 ```
 
-**Current supported Vapi voices (verified via API on 2026-05-01):** Clara, Godfrey, Layla, Sid, Gustavo, Elliot, Kylie, Rohan, Lily, Savannah, Hana, Neha, Cole, Harry, Paige, Spencer, Nico, Kai, Emma, Sagar, Neil, Naina, Leah, Tara, Jess, Leo, Dan, Mia, Zac, Zoe.
+### 3. Vapi voice `Lily` was retired (March 2026)
 
-> Note: the API still accepts `Lily` despite the earlier deprecation message — but Vapi may remove it again. Stick with the verified list above.
+Attempting `voiceId: "Lily"` returns an error. **Use `Elliot`** for Joey.
 
-**Recommended for Joey:** `Elliot` — Vapi's flagship male voice (warm, professional, 30s). `Mason` is NOT in the supported list and will return a 400 error.
+**Current supported Vapi voices (verified 2026-05-01):** Clara, Godfrey, Layla, Sid, Gustavo, Elliot, Kylie, Rohan, Lily, Savannah, Hana, Neha, Cole, Harry, Paige, Spencer, Nico, Kai, Emma, Sagar, Neil, Naina, Leah, Tara, Jess, Leo, Dan, Mia, Zac, Zoe. (`Mason` is NOT supported — returns 400.)
 
 ### 4. firstMessage — keep it simple, no special characters
 
-Use a clean, simple greeting. Escaped characters or punctuation can cause TTS to behave oddly:
-```
-"Thanks for calling PolarCrest HVAC, this is Joey. How can I help you today?"
-```
-No exclamation marks, no special characters, no last name.
+Use a clean greeting. Escaped characters or unusual punctuation can cause TTS to behave oddly. No exclamation marks, no special characters.
 
 ### 5. Call Duration can't be filled by the assistant
 
-Joey doesn't know the call duration while the call is happening — that data only exists in the **end-of-call report** sent to the webhook AFTER the call ends. The Make scenario handles this by:
-- Extracting `durationSeconds` from the end-of-call report
-- Formatting it as `mm:ss`
-- Appending a new row to the `Calls` tab of the spreadsheet (separate from the `Leads` tab Joey writes to)
+Joey doesn't know the call duration mid-call — that data only exists in the end-of-call report sent AFTER the call ends. Make handles it by appending to the `Calls` tab.
 
 ### 6. Create the Google Sheet BEFORE testing
 
-The Google Sheets tool will fail if the spreadsheet doesn't exist yet. Create it during Phase 1 (Foundation), not during testing. Use the Apps Script function above to auto-create it with proper headers and formatting.
+The logLead tool will fail if the spreadsheet doesn't exist. Create it in Phase 1.
 
-### 7. endCall and transferCall CAN be saved tools and attached via `toolIds`
+### 7. endCall and transferCall can be saved tools attached via `toolIds`
 
-Earlier guidance said these had to be inline in `model.tools`. That's no longer true — verified on 2026-05-01 that creating `endCall` and `transferCall` as saved tools and attaching them via `model.toolIds` works fine alongside Google Calendar and Sheets tools. Treat all 5 the same way: create once, reference by ID.
+No need to inline them in `model.tools` — saved tools work the same way and keep all tool configs in one place.
 
-The inline-in-`model.tools` approach still works too, but the saved-tool path keeps tool definitions in one place (`config/tools.json`) and avoids redefining them in every assistant.
+### 8. Loading .env on Windows Git Bash
 
-### 8. Vapi API env loading on Windows/Git Bash
-
-When using `curl` with the Vapi API from Git Bash on Windows, load env vars with:
 ```bash
 export $(grep -v '^#' .env | xargs)
 ```
-The `source .env` approach doesn't reliably export the variables for subcommands.
+`source .env` doesn't reliably export variables for subcommands on Windows Git Bash.
 
 ### 9. Test both outbound AND inbound calls
 
-- **Outbound** (`/vapi-create-call`): Tests that the assistant works, voice sounds good, tools fire
-- **Inbound** (call the Vapi number): Tests the full production flow including phone number routing
-
-Both are needed. Issues can appear in one but not the other.
+Issues can appear in one flow but not the other. Always test both.
 
 ### 10. GPT-4.1 is excellent for voice AI tool calling
 
-GPT-4.1 reliably:
-- Asks one question at a time (follows the system prompt structure)
-- Calls tools in parallel when appropriate (bookAppointment + logLead in one turn)
-- Handles edge cases well (emergency triage, area disqualification, transfer requests)
-- Keeps responses concise for natural conversation flow
+Temperature 0.7 + maxTokens 300 is a good balance for conversational yet focused responses. It reliably calls tools in parallel (bookAppointment + logLead simultaneously), follows the one-question-at-a-time rule, and handles edge cases well.
 
-Temperature 0.7 with maxTokens 300 is a good balance for conversational yet focused responses.
+### 11. Emergency triage must come BEFORE the standard qualifying flow
 
-### 11. HVAC-specific: Emergency triage must come BEFORE the standard flow
+For HVAC, gas leaks and CO alarms are safety emergencies. If the standard flow runs first (ask location, ask service type...) before the emergency check, this is a dangerous failure mode. Emergency triage is the FIRST block in the system prompt.
 
-Unlike a construction lead qualifier, HVAC callers may have safety-critical issues. If the system prompt runs the standard flow first (ask project type, ask location, etc.) before handling gas smell or CO alarms, this is a dangerous failure mode. Emergency triage must be the FIRST conditional block in the prompt — not step 4 or 5.
+### 12. Canadian phone numbers in E.164 format
 
-### 12. Canadian phone number formatting
+Use `+19057124499` in code, not `(905) 712-4499`. When Joey speaks a number to a caller, he says it digit by digit: *"9-0-5, 7-1-2, 4-4-9-9"* — not as a block — for clarity over voice.
 
-Vapi phone numbers for Canada follow E.164 format: `+1XXXXXXXXXX`. When transferring calls or setting the emergency line, use `+19057124499` not `(905) 712-4499`. When Joey *speaks* the number to a caller, he says it as digits: *"9-0-5, 7-1-2, 4-4-9-9"* — not as a block — for clarity over voice.
+### 13. Make.com API auth is `Token`, not `Bearer`
+
+`Authorization: Token <api_key>` with capital T. Using `Bearer` returns a 401.
+
+### 14. Make scenario `scheduling` must include `interval`
+
+`{type:"indefinitely"}` alone returns error `IM008 "Invalid interval"`. Must include: `{type:"indefinitely", interval:900}`.
 
 ---
 
@@ -683,22 +1031,103 @@ Vapi phone numbers for Canada follow E.164 format: `+1XXXXXXXXXX`. When transfer
 
 | Issue | Fix |
 |-------|-----|
-| API calls return 401 | Check `VAPI_API_KEY` in `.env` — re-run `/vapi-setup-api-key`. Use private key, not public key |
-| Google Calendar tools fail | Reconnect Google Calendar in Vapi Dashboard > Integrations |
-| Google Sheets tool returns "entity not found" | Hardcode the real spreadsheet ID in the logLead tool description |
-| Google Sheets tool fails | Reconnect Google Sheets in Vapi Dashboard > Integrations |
+| API calls return 401 | Check `VAPI_API_KEY` in `.env` — use the private key, not public key |
+| Google Calendar tools fail | Reconnect Google Calendar in Vapi Dashboard → Integrations |
+| Google Sheets tool returns "entity not found" | Hardcode the real spreadsheet ID in the logLead tool description (Lesson #1) |
+| Google Sheets tool fails | Reconnect Google Sheets in Vapi Dashboard → Integrations |
 | Joey doesn't speak first | Verify `firstMessageMode` is `"assistant-speaks-first"` |
 | Joey gives exact pricing | Strengthen the "NEVER give exact pricing" rule in system prompt |
-| Joey skips emergency triage | Move emergency triage block to the TOP of the system prompt, before the standard flow |
+| Joey skips emergency triage | Move emergency triage block to the TOP of the system prompt |
 | Joey books appointment for gas smell caller | Add explicit rule: "For gas smell or CO alarm, do NOT book — deliver safety protocol and end call" |
 | Transcription misses "PolarCrest" | Add to `transcriber.keywords` with boost value — `"PolarCrest:3"` |
-| Webhook not receiving events | Check `serverUrl` on assistant — must be publicly accessible |
+| Webhook not receiving events | Check `server.url` on assistant — must be a publicly accessible HTTPS URL |
 | Calls drop after greeting | Check `maxTokens` isn't too low in model config |
 | Voice sounds wrong | Check `voiceId` against the supported list (Lesson #3). Use `Elliot` for Joey |
-| Call duration not in `Calls` tab | This row is appended by the Make scenario, not Joey. Open Make → scenario history to see if it ran. Common cause: `Calls` tab missing — re-run the Apps Script from CLAUDE.md to create it |
-| Make scenario shows "Sheet not found" error | The `Calls` tab doesn't exist in the spreadsheet yet — run the Apps Script `createPolarCrestCallsTab()` |
-| Make scenario didn't fire | Check Vapi assistant `server.url` is pointing at the Make webhook (`PATCH /assistant/{id}` body: `{"server":{"url":"..."}}`). Then check Make scenario is **active** (toggle ON, isActive=true) |
+| Call duration not in `Calls` tab | Appended by Make, not Joey. Check Make scenario history. Common cause: `Calls` tab missing — re-run the Apps Script |
+| Make scenario shows "Sheet not found" | `Calls` tab doesn't exist — run `createPolarCrestCallsTab()` Apps Script |
+| Make scenario didn't fire | Check Vapi assistant `server.url` points at Make webhook. Check scenario is active (isActive=true) |
+| Make API returns 401 | Auth header must be `Token <key>` not `Bearer <key>` |
+| Make scenario creation fails with IM008 | Add `interval: 900` to the scheduling object alongside `type` |
+| `node scripts/create-make-scenario.js` fails | Run `npm install axios dotenv` first. Check all Make connection IDs are correct |
 | Joey promises specific tech | Add rule: "NEVER promise a specific technician by name" |
+| No email after test call | Check Make scenario history. Check Gmail connection is valid. Check scenario is active |
+| Google Calendar not booking | Verify the calendar ID in your Vapi Google Calendar integration matches `GOOGLE_CALENDAR_ID` in `.env` |
+
+---
+
+## Glossary
+
+**API key** — A secret password that lets software talk to a service on your behalf. Never share it publicly.
+
+**Assistant** — In Vapi, an assistant is a complete AI agent: it has a voice, a brain (LLM), a transcriber, tools it can use, and a system prompt that tells it how to behave.
+
+**Blueprint** — In Make.com, a blueprint is the JSON definition of a scenario (which modules it has, how they're connected, what data they use).
+
+**Deepgram** — The service that converts spoken audio from the caller into text. Nova-3 is its most accurate model for English.
+
+**E.164 format** — The international standard for phone numbers: `+` country code + number, no spaces or dashes. Canada/US: `+1XXXXXXXXXX`.
+
+**End-of-call report** — A JSON payload Vapi sends to your webhook URL when a call ends. Contains transcript, summary, duration, cost, recording URL, and how the call ended.
+
+**GPT-4.1** — OpenAI's language model that powers Joey's reasoning and conversation. It decides what to say and when to use tools.
+
+**Hook** — An automated action that fires on a call event (e.g., "if the caller is silent for 8 seconds, say 'Are you still there?'"). Configured in the assistant.
+
+**LLM** — Large Language Model. The AI brain. In this project it's GPT-4.1 via OpenAI.
+
+**Make.com** — A no-code automation platform. You connect apps and define what should happen when a trigger fires. Here it receives the call report from Vapi, sends an email, and updates Google Sheets.
+
+**Node.js** — A JavaScript runtime that lets you run JavaScript on your computer (outside of a browser). Needed to run the `create-make-scenario.js` script.
+
+**OAuth** — A secure way to let one service access another on your behalf without sharing your password. When you "Connect Google Calendar" in Vapi dashboard, that's OAuth.
+
+**REST API** — A standard way for software to talk to web services using HTTP requests (GET, POST, PATCH, etc.). This whole project is built by calling REST APIs.
+
+**Scenario** — In Make.com, a scenario is an automated workflow. It has a trigger (e.g., a webhook receives data) and actions (e.g., send email, append to sheet).
+
+**Spreadsheet ID** — The unique identifier for a Google Sheet. Found in the URL between `/d/` and `/edit`. Example: `1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms`.
+
+**Squad** — A Vapi feature where multiple assistants hand off to each other (e.g., a triage assistant hands off to a booking specialist). Not used in this project — Joey handles everything.
+
+**TTS** — Text-to-Speech. Converts Joey's text responses into a spoken voice.
+
+**Tool** — In Vapi, a tool is an action the assistant can take during a call. Tools are defined separately and attached to an assistant by ID. Joey has 5 tools: check calendar, book appointment, log lead, end call, transfer call.
+
+**Transcriber** — The service that converts caller speech to text (Speech-to-Text / STT). This project uses Deepgram Nova-3.
+
+**Vapi** — The voice AI platform that hosts Joey. It handles telephony (phone calls), routes audio to/from the LLM and TTS, and manages the call lifecycle.
+
+**Webhook** — A URL that receives data when something happens. Vapi sends call reports to your Make.com webhook URL when calls end.
+
+**`{{now}}`** — A Vapi template variable that gets replaced with the current date and time when a call starts. Used in Joey's system prompt so he knows today's date.
+
+---
+
+## FAQ
+
+**Can I use this for a different type of business?**
+Yes. Replace the business details in this file, update Joey's system prompt (`prompts/joey-system.md`), and adjust the qualifying flow questions. The infrastructure (Vapi + Make + Google) stays the same.
+
+**Do I need to know how to code?**
+No. You paste commands into Claude Code, which writes and runs the code for you. The one script you run (`create-make-scenario.js`) runs with a single command.
+
+**Can I skip Make.com?**
+Yes, with trade-offs. Without Make, you won't get post-call email notifications or the `Calls` tab data. Joey will still book appointments and log leads to the `Leads` tab. If you want to skip Make, just don't run Phase 5 — everything else still works.
+
+**What if I want to use a different voice?**
+Change `voiceId` in the assistant config. See the supported voices list in Lesson #3.
+
+**Can I use a different LLM instead of GPT-4.1?**
+Yes — Vapi supports OpenAI, Anthropic Claude, Google Gemini, and others. Change the `provider` and `model` fields in the assistant config. GPT-4.1 is recommended for tool calling reliability.
+
+**How do I update Joey's system prompt after he's created?**
+Edit `prompts/joey-system.md`, then PATCH the assistant via the Vapi API or dashboard. Claude Code can do this: "Update Joey's system prompt with the content from prompts/joey-system.md."
+
+**Can multiple people call at the same time?**
+Yes. Vapi handles concurrent calls automatically. Each call gets its own session.
+
+**Is this HIPAA / PIPEDA compliant?**
+This demo is not configured for compliance. For production use with real customer data, review Vapi's compliance documentation and configure data handling accordingly.
 
 ---
 
